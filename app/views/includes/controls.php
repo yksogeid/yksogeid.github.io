@@ -3,6 +3,13 @@
     <span id="themeIcon" class="text-2xl">🌙</span>
 </div>
 
+<!-- Logout Button (Only if logged in) -->
+<?php if (isset($_SESSION['auth_user']) && $_SESSION['auth_user'] === true): ?>
+    <a href="<?= BASE_URL ?>auth/logout" class="logout-button" title="Cerrar Sesión">
+        <span class="mr-2">🚪</span> Cerrar Sesión
+    </a>
+<?php endif; ?>
+
 <!-- Music Player -->
 <div class="music-player">
     <button class="music-btn" onclick="toggleMusic()" id="musicBtn" title="Reproducir/Pausar música">

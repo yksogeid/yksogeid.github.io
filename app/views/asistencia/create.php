@@ -1,44 +1,9 @@
 <?php
-require_once "config.php";
-
-$fecha = date("Y-m-d");
-$mensaje = "";
-$total_asistentes = 0;
-
-// Obtener niños
-$niños = supabase_request("ninos");
-
-// Guardar asistencia
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $total_asistentes = isset($_POST["asistencia"]) ? count($_POST["asistencia"]) : 0;
-
-    if ($total_asistentes > 0) {
-        foreach ($_POST["asistencia"] as $id => $valor) {
-            $data = [
-                "nino_id" => $id,
-                "fecha" => $fecha,
-                "asistio" => true
-            ];
-
-            // UPSERT (insertar o actualizar)
-            supabase_request(
-                "asistencia",
-                "POST",
-                $data,
-                "?on_conflict=nino_id,fecha"
-            );
-        }
-        $mensaje = "✅ Asistencia guardada exitosamente: $total_asistentes niño(s) presente(s)";
-    } else {
-        $mensaje = "⚠️ No se seleccionó ningún niño";
-    }
-}
-
-// Formatear fecha en español
-$meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-$fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('Y');
+$mensaje = isset($mensaje) ? $mensaje : "";
+$ninos = isset($ninos) ? $ninos : [];
+$asistencia_hoy = isset($asistencia_hoy) ? $asistencia_hoy : [];
+$fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
 ?>
-
 <!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 
@@ -54,7 +19,7 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
             darkMode: 'class',
         }
     </script>
-    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/styles.css">
     <style>
         .checkbox-wrapper {
             position: relative;
@@ -160,7 +125,7 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
 </head>
 
 <!-- Back Button -->
-<a href="index.php" class="back-button">
+<a href="<?= BASE_URL ?>" class="back-button">
     <span>←</span>
     <span>Volver</span>
 </a>
@@ -193,7 +158,7 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
     <div class="glass-card rounded-2xl p-6 mb-6 shadow-xl">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="stat-card rounded-xl p-4 text-center shadow-lg">
-                <div class="text-3xl font-bold"><?php echo count($niños); ?></div>
+                <div class="text-3xl font-bold"><?php echo count($ninos); ?></div>
                 <div class="text-sm opacity-90">Total Niños</div>
             </div>
             <div class="stat-card rounded-xl p-4 text-center shadow-lg">
@@ -201,14 +166,15 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
                 <div class="text-sm opacity-90">Presentes Hoy</div>
             </div>
             <div class="stat-card rounded-xl p-4 text-center shadow-lg">
-                <div class="text-3xl font-bold" id="absentCount"><?php echo count($niños); ?></div>
+                <div class="text-3xl font-bold" id="absentCount"><?php echo count($ninos); ?></div>
                 <div class="text-sm opacity-90">Ausentes</div>
             </div>
         </div>
     </div>
 
     <!-- Main Form -->
-    <form method="POST" id="attendanceForm" class="glass-card rounded-2xl p-6 md:p-8 shadow-2xl">
+    <form method="POST" action="<?= BASE_URL ?>asistencia/store" id="attendanceForm"
+        class="glass-card rounded-2xl p-6 md:p-8 shadow-2xl">
 
         <!-- Quick Actions -->
         <div class="flex flex-wrap gap-3 mb-6">
@@ -223,41 +189,61 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
         </div>
 
         <!-- Children List -->
-        <div class="space-y-3 mb-6">
-            <?php if (count($niños) === 0): ?>
-                <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+            <?php if (count($ninos) === 0): ?>
+                <div class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
                     <p class="text-xl mb-2">📝 No hay niños registrados</p>
                     <p class="text-sm">Registra niños primero para poder tomar asistencia</p>
                 </div>
             <?php else: ?>
-                <?php foreach ($niños as $index => $n): ?>
-                    <div
-                        class="child-card bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                        <div class="flex items-center gap-4 flex-1">
-                            <div
-                                class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                <?php echo strtoupper(substr($n["nombre_completo"], 0, 1)); ?>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="font-semibold text-gray-800 dark:text-gray-200 text-lg">
-                                    <?php echo htmlspecialchars($n["nombre_completo"]); ?>
-                                </h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">
-                                    🎂 <?php echo $n["edad"]; ?> año<?php echo $n["edad"] != 1 ? 's' : ''; ?>
-                                </p>
+                <?php foreach ($ninos as $index => $n): ?>
+                    <?php 
+                        $isPresente = isset($asistencia_hoy[$n['id']]);
+                    ?>
+                    <!-- Tarjeta Niño (Vertical 3x4) -->
+                    <div class="child-card group relative bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md border hover:border-green-400 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl flex flex-col items-center justify-between gap-4 <?php echo $isPresente ? 'selected ring-2 ring-green-500' : 'border-gray-200 dark:border-gray-700'; ?>">
+                        
+                        <!-- Avatar -->
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-3xl shadow-lg mb-2 group-hover:scale-110 transition-transform">
+                            <?php echo strtoupper(substr($n["nombre_completo"], 0, 1)); ?>
+                        </div>
+                        
+                        <!-- Info -->
+                        <div class="text-center w-full">
+                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-lg truncate w-full px-2" title="<?php echo htmlspecialchars($n["nombre_completo"]); ?>">
+                                <?php echo htmlspecialchars($n["nombre_completo"]); ?>
+                            </h3>
+                            <div class="flex items-center justify-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                <span>🎂 <?php echo $n["edad"]; ?> años</span>
                             </div>
                         </div>
-                        <div class="checkbox-wrapper">
-                            <input type="checkbox" name="asistencia[<?php echo $n['id']; ?>]" value="1" class="custom-checkbox"
-                                onchange="updateStats(); updateCardStyle(this);" id="check_<?php echo $index; ?>">
+
+                        <!-- Checkbox Wrapper -->
+                        <div class="w-full pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-center">
+                            <label class="cursor-pointer flex flex-col items-center gap-2 select-none w-full group/check">
+                                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 group-hover/check:text-green-500 transition-colors">Asistencia</span>
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" name="asistencia[<?php echo $n['id']; ?>]" value="1" class="custom-checkbox"
+                                        onchange="updateStats(); updateCardStyle(this);" id="check_<?php echo $index; ?>" 
+                                        <?php echo $isPresente ? 'checked' : ''; ?>>
+                                </div>
+                            </label>
                         </div>
+
+                        <!-- Status Badge (Absolute) -->
+                        <div class="absolute top-3 right-3 opacity-0 transform scale-0 transition-all duration-300 <?php echo $isPresente ? 'opacity-100 scale-100' : 'opacity-0 scale-0'; ?> status-badge">
+                            <span class="bg-green-100 text-green-600 text-xs font-bold px-2 py-1 rounded-full border border-green-200 shadow-sm">
+                                ✅
+                            </span>
+                        </div>
+
                     </div>
                 <?php endforeach; ?>
             <?php endif; ?>
         </div>
 
         <!-- Submit Button -->
-        <?php if (count($niños) > 0): ?>
+        <?php if (count($ninos) > 0): ?>
             <div class="flex justify-center">
                 <button type="submit"
                     class="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all transform hover:scale-105">
@@ -275,10 +261,10 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
 </div>
 
 <!-- Include shared controls (theme toggle & music player) -->
-<?php include 'includes/controls.php'; ?>
+<?php include 'app/views/includes/controls.php'; ?>
 
 <!-- Shared JavaScript -->
-<script src="assets/js/app.js"></script>
+<script src="<?= BASE_URL ?>assets/js/app.js"></script>
 
 <script>
     function updateStats() {
@@ -286,16 +272,33 @@ $fecha_formateada = date('d') . ' de ' . $meses[date('n') - 1] . ' de ' . date('
         const checked = document.querySelectorAll('.custom-checkbox:checked').length;
         const total = checkboxes.length;
 
-        document.getElementById('selectedCount').textContent = checked;
-        document.getElementById('absentCount').textContent = total - checked;
+        const selCount = document.getElementById('selectedCount');
+        if (selCount) selCount.textContent = checked;
+
+        const abCount = document.getElementById('absentCount');
+        if (abCount) abCount.textContent = total - checked;
     }
 
     function updateCardStyle(checkbox) {
         const card = checkbox.closest('.child-card');
+        const badge = card.querySelector('.status-badge');
+        
         if (checkbox.checked) {
-            card.classList.add('selected');
+            card.classList.add('selected', 'ring-2', 'ring-green-500');
+            card.classList.remove('border-gray-200', 'dark:border-gray-700');
+            // Show badge
+            if(badge) {
+                badge.classList.remove('opacity-0', 'scale-0');
+                badge.classList.add('opacity-100', 'scale-100');
+            }
         } else {
-            card.classList.remove('selected');
+            card.classList.remove('selected', 'ring-2', 'ring-green-500');
+            card.classList.add('border-gray-200', 'dark:border-gray-700');
+            // Hide badge
+            if(badge) {
+                badge.classList.remove('opacity-100', 'scale-100');
+                badge.classList.add('opacity-0', 'scale-0');
+            }
         }
     }
 
