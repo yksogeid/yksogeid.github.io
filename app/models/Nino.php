@@ -12,11 +12,19 @@ class Nino
 
     public function getAll()
     {
-        return $this->db->request("ninos");
+        return $this->db->query("SELECT * FROM ninos ORDER BY nombre_completo ASC");
     }
 
     public function create($data)
     {
-        return $this->db->request("ninos", "POST", $data);
+        $keys = array_keys($data);
+        $fields = implode(", ", $keys);
+
+        // Create placeholders like :nombre_completo, :edad
+        $placeholders = ":" . implode(", :", $keys);
+
+        $sql = "INSERT INTO ninos ($fields) VALUES ($placeholders)";
+
+        return $this->db->query($sql, $data);
     }
 }

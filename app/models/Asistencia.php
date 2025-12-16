@@ -12,28 +12,50 @@ class Asistencia
 
     public function getAll()
     {
-        return $this->db->request("asistencia");
+        return $this->db->query("SELECT * FROM asistencia");
     }
 
     public function getByDate($fecha)
     {
-        return $this->db->request("asistencia", "GET", null, "?fecha=eq." . $fecha);
+        return $this->db->query("SELECT * FROM asistencia WHERE fecha = ?", [$fecha]);
     }
 
     public function saveBatch($data)
     {
         if (empty($data))
             return;
-        // Upsert on conflict id, fecha (Bulk)
-        return $this->db->request("asistencia", "POST", $data, "?on_conflict=nino_id,fecha");
+
+        $values = [];
+        $params = [];
+        foreach ($data as $i => $row) {
+            $nKey = ":n" . $i;
+            $fKey = ":f" . $i;
+            $aKey = ":a" . $i;
+
+            $values[] = "($nKey, $fKey, $aKey)";
+
+            $params[$nKey] = $row['nino_id'];
+            $params[$fKey] = $row['fecha'];
+            $params[$aKey] = $row['asistio'] ? 1 : 0;
+        }
+
+        $valuesStr = implode(", ", $values);
+        $sql = "INSERT INTO asistencia (nino_id, fecha, asistio) VALUES $valuesStr 
+                ON DUPLICATE KEY UPDATE asistio = VALUES(asistio)";
+
+        return $this->db->query($sql, $params);
     }
 
     public function deleteBatch($nino_ids, $fecha)
     {
         if (empty($nino_ids))
             return;
-        $ids_string = implode(',', $nino_ids);
-        return $this->db->request("asistencia", "DELETE", null, "?nino_id=in.(" . $ids_string . ")&fecha=eq." . $fecha);
+
+        $placeholders = implode(',', array_fill(0, count($nino_ids), '?'));
+        $sql = "DELETE FROM asistencia WHERE fecha = ? AND nino_id IN ($placeholders)";
+
+        $params = array_merge([$fecha], $nino_ids);
+        return $this->db->query($sql, $params);
     }
 
     // Helper methods for stats can go here if we want to thinner controllers
