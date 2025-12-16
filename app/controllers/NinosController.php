@@ -77,4 +77,17 @@ class NinosController extends Controller
             'ninos' => $ninos
         ]);
     }
+    public function carnets()
+    {
+        $ninoModel = $this->model('Nino');
+        try {
+            $ninos = $ninoModel->getAll();
+        } catch (Exception $e) {
+            $ninos = [];
+        }
+
+        $this->view('ninos/carnets', [
+            'ninos' => $ninos
+        ]);
+    }
 }

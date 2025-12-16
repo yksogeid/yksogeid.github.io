@@ -14,6 +14,9 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
     <meta name="description" content="Tomar Asistencia - Sistema Navideño">
     <title>Tomar Asistencia - Navidad</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTML5-QRCode Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -121,6 +124,13 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
+
+        /* Scanner Modal Styles */
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
     </style>
 </head>
 
@@ -177,15 +187,38 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
         class="glass-card rounded-2xl p-6 md:p-8 shadow-2xl">
 
         <!-- Quick Actions -->
-        <div class="flex flex-wrap gap-3 mb-6">
+        <div class="flex flex-wrap items-center gap-3 mb-6 sticky top-2 z-10 bg-white/50 dark:bg-gray-800/50 backdrop-blur p-2 rounded-xl">
             <button type="button" onclick="selectAll()"
-                class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg">
-                ✓ Seleccionar Todos
+                class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg text-sm">
+                ✓ Todos
             </button>
             <button type="button" onclick="deselectAll()"
-                class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg">
-                ✗ Deseleccionar Todos
+                class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-all shadow-md hover:shadow-lg text-sm">
+                ✗ Ninguno
             </button>
+            <button type="button" onclick="toggleScanner()"
+                class="ml-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-2 animate-pulse hover:animate-none">
+                <span>📷</span> Escanear QR
+            </button>
+        </div>
+
+        <!-- QR Scanner Container (Hidden) -->
+        <div id="scanner-container" class="hidden mb-6 p-4 bg-black/90 rounded-2xl relative">
+             <button type="button" onclick="stopScanner()" class="absolute top-2 right-2 text-white bg-red-600 rounded-full p-2 hover:bg-red-700 z-50">
+                ✕
+            </button>
+            <h3 class="text-white text-center mb-2 font-bold">Escaneando QR...</h3>
+            <div id="reader" class="bg-white"></div>
+            <p class="text-gray-400 text-center text-xs mt-2">Muestra el código QR del niño frente a la cámara</p>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="scan-toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl z-50 transition-all duration-300 translate-y-20 opacity-0 flex items-center gap-2">
+            <span class="text-2xl">✨</span>
+            <div>
+                <p class="font-bold">¡Asistencia Registrada!</p>
+                <p class="text-xs text-green-100" id="toast-name">Niño identificado</p>
+            </div>
         </div>
 
         <!-- Children List -->
@@ -201,7 +234,7 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
                         $isPresente = isset($asistencia_hoy[$n['id']]);
                     ?>
                     <!-- Tarjeta Niño (Vertical 3x4) -->
-                    <div class="child-card group relative bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md border hover:border-green-400 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl flex flex-col items-center justify-between gap-4 <?php echo $isPresente ? 'selected ring-2 ring-green-500' : 'border-gray-200 dark:border-gray-700'; ?>">
+                    <div id="card-<?php echo $n['id']; ?>" class="child-card group relative bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-md border hover:border-green-400 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl flex flex-col items-center justify-between gap-4 <?php echo $isPresente ? 'selected ring-2 ring-green-500' : 'border-gray-200 dark:border-gray-700'; ?>">
                         
                         <!-- Avatar -->
                         <div class="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-3xl shadow-lg mb-2 group-hover:scale-110 transition-transform">
@@ -211,7 +244,7 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
                         <!-- Info -->
                         <div class="text-center w-full">
                             <h3 class="font-bold text-gray-800 dark:text-gray-100 text-lg truncate w-full px-2" title="<?php echo htmlspecialchars($n["nombre_completo"]); ?>">
-                                <?php echo htmlspecialchars($n["nombre_completo"]); ?>
+                                <span class="child-name"><?php echo htmlspecialchars($n["nombre_completo"]); ?></span>
                             </h3>
                             <div class="flex items-center justify-center gap-2 mt-1 text-sm text-gray-500 dark:text-gray-400">
                                 <span>🎂 <?php echo $n["edad"]; ?> años</span>
@@ -223,7 +256,8 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
                             <label class="cursor-pointer flex flex-col items-center gap-2 select-none w-full group/check">
                                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 group-hover/check:text-green-500 transition-colors">Asistencia</span>
                                 <div class="checkbox-wrapper">
-                                    <input type="checkbox" name="asistencia[<?php echo $n['id']; ?>]" value="1" class="custom-checkbox"
+                                    <input type="checkbox" name="asistencia[<?php echo $n['id']; ?>]" value="1" class="custom-checkbox attendance-check"
+                                        data-id="<?php echo $n['id']; ?>"
                                         onchange="updateStats(); updateCardStyle(this);" id="check_<?php echo $index; ?>" 
                                         <?php echo $isPresente ? 'checked' : ''; ?>>
                                 </div>
@@ -318,6 +352,127 @@ $fecha_formateada = isset($fecha_formateada) ? $fecha_formateada : "";
             updateCardStyle(cb);
         });
         updateStats();
+    }
+
+    // --- QR Scanner Logic ---
+    let html5QrcodeScanner = null;
+
+    function toggleScanner() {
+        const container = document.getElementById('scanner-container');
+        if (container.classList.contains('hidden')) {
+            startScanner();
+        } else {
+            stopScanner();
+        }
+    }
+
+    function startScanner() {
+        document.getElementById('scanner-container').classList.remove('hidden');
+        
+        // Initialize if not already done
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                },
+                false
+            );
+            
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+    }
+
+    function stopScanner() {
+        document.getElementById('scanner-container').classList.add('hidden');
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear().then(() => {
+                html5QrcodeScanner = null;
+            }).catch(err => {
+                console.error("Failed to clear scanner", err);
+            });
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        // Assuming user ID is passed directly in QR or as plain text
+        // Look for checkbox with this ID
+        const targetId = decodedText.trim();
+        const checkbox = document.querySelector(`.attendance-check[data-id="${targetId}"]`);
+
+        if (checkbox) {
+            if (!checkbox.checked) {
+                // Check it
+                checkbox.checked = true;
+                updateCardStyle(checkbox);
+                updateStats();
+                
+                // Visual feedback
+                scrollToCard(targetId);
+                showToast(checkbox);
+                playSuccessSound();
+            } else {
+                // Already checked but still show feedback
+                showToast(checkbox, "¡Ya estaba registrado!");
+            }
+        } else {
+            console.warn(`No match found for QR: ${decodedText}`);
+        }
+    }
+
+    function onScanFailure(error) {
+        // handle scan failure
+    }
+
+    function scrollToCard(id) {
+        const card = document.getElementById(`card-${id}`);
+        if(card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight effect
+            card.classList.add('ring-4', 'ring-yellow-400');
+            setTimeout(() => card.classList.remove('ring-4', 'ring-yellow-400'), 1000);
+        }
+    }
+
+    function showToast(checkbox, message = "¡Asistencia Registrada!") {
+        const toast = document.getElementById('scan-toast');
+        const nameEl = document.getElementById('toast-name');
+        
+        // Get name
+        const card = checkbox.closest('.child-card');
+        const name = card.querySelector('.child-name').innerText;
+        
+        nameEl.innerText = name;
+        toast.querySelector('p.font-bold').innerText = message;
+        
+        // Show
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        
+        // Hide after 3s
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
+    }
+
+    function playSuccessSound() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(500, audioCtx.currentTime); 
+        oscillator.frequency.exponentialRampToValueAtTime(1000, audioCtx.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.3);
     }
 
     // Initialize stats on page load

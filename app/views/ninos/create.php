@@ -182,12 +182,19 @@ $ninos = isset($ninos) ? $ninos : [];
         
         <!-- Left Column: Form -->
         <div class="space-y-6">
-            <!-- Quick Stats (Moved here for better layout) -->
-            <div class="glass-card rounded-2xl p-6 shadow-xl flex items-center justify-between">
-                <div class="text-white/90 font-medium">Total Registrados</div>
-                <div class="text-white text-4xl font-bold">
-                    <?php echo isset($total_ninos) ? $total_ninos : '0'; ?>
+            <!-- Quick Stats & Actions -->
+            <div class="flex gap-4">
+                <div class="glass-card rounded-2xl p-6 shadow-xl flex-1 flex items-center justify-between">
+                    <div class="text-white/90 font-medium">Total Registrados</div>
+                    <div class="text-white text-4xl font-bold">
+                        <?php echo isset($total_ninos) ? $total_ninos : '0'; ?>
+                    </div>
                 </div>
+                
+                <a href="<?= BASE_URL ?>ninos/carnets" class="glass-card rounded-2xl p-6 shadow-xl flex-1 flex flex-col items-center justify-center hover:bg-white/10 transition-colors group text-center cursor-pointer border-2 border-transparent hover:border-white/30">
+                    <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🪪</span>
+                    <span class="text-white font-bold text-sm">Carnets QR</span>
+                </a>
             </div>
             <div class="glass-card rounded-2xl p-8 shadow-2xl form-container relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>

@@ -119,7 +119,7 @@
         </div>
 
         <!-- Navigation Buttons -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 fade-in">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 fade-in">
             <a href="<?= BASE_URL ?>ninos/create"
                 class="nav-button glass-card rounded-2xl p-6 shadow-xl text-center block">
                 <div class="text-5xl mb-3">🎁</div>
@@ -137,6 +137,12 @@
                 <div class="text-5xl mb-3">🥘</div>
                 <h3 class="text-xl font-bold text-gray-800 mb-2">Gestionar Compartir</h3>
                 <p class="text-gray-600 text-sm">Asignar refrigerios por día</p>
+            </a>
+            <a href="<?= BASE_URL ?>estadisticas/index"
+                class="nav-button glass-card rounded-2xl p-6 shadow-xl text-center block">
+                <div class="text-5xl mb-3">📈</div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Ver Estadísticas</h3>
+                <p class="text-gray-600 text-sm">Reportes y análisis de datos</p>
             </a>
         </div>
 
